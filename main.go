@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 )
 
 type Config struct {
@@ -17,51 +18,60 @@ type Config struct {
 func main() {
 	flag.Parse()
 
-	content, configFileErr := getConfigContent()
-	if configFileErr != nil {
-		panic(configFileErr)
+	log.SetFlags(0)
+	log.SetPrefix("homie: ")
+
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		log.Fatalf("failed to get config directory: %v", err)
+	}
+
+	configFilePath := filepath.Join(configDir, "homie", "config.json")
+	content, err := getConfigContent(configFilePath)
+	if err != nil {
+		log.Fatalf("%v", err)
 	}
 
 	// parse config
 	config, err := parseConfig(content)
 	if err != nil {
-		panic(err)
+		log.Fatalf("invalid config: %v", err)
+	}
+
+	// run
+	if config.HomeAssistantEndpoint == "" {
+		log.Fatalf("HomeAssistantEndpoint is not set in %s", configFilePath)
+	}
+	if config.HomeAssistantToken == "" {
+		log.Fatalf("HomeAssistantToken is not set in %s", configFilePath)
 	}
 
 	run(config)
 }
 
-func getConfigContent() ([]byte, error) {
-	var configDir, err = os.UserConfigDir()
-	if err != nil {
-		log.Fatalf("failed to get config directory: %v", err)
-	}
-
-	var configFilePath = configDir + "/homie/config.json"
-
+func getConfigContent(configFilePath string) ([]byte, error) {
 	// read config
 	content, err := os.ReadFile(configFilePath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			log.Printf("config file not found, creating new one at %s", configFilePath)
 			config := Config{
 				HomeAssistantEndpoint: "http://192.168.1.10:8123",
 				HomeAssistantToken:    "token",
 			}
 			content, err = json.Marshal(config)
 			if err != nil {
-				log.Fatalf("failed to marshal config: %v", err)
+				return nil, fmt.Errorf("failed to marshal config: %w", err)
 			}
-			err = os.MkdirAll(configDir+"/homie", 0o700)
+			err = os.MkdirAll(filepath.Dir(configFilePath), 0o700)
 			if err != nil {
-				log.Fatalf("failed to create config directory: %v", err)
+				return nil, fmt.Errorf("failed to create config directory: %w", err)
 			}
-			err = os.WriteFile(configFilePath, content, 0644)
+			err = os.WriteFile(configFilePath, content, 0o600)
 			if err != nil {
-				log.Fatalf("failed to write config file: %v", err)
+				return nil, fmt.Errorf("failed to write config file: %w", err)
 			}
 
-			return content, fmt.Errorf("config file created, edit it at %s", configFilePath)
+			return nil, fmt.Errorf("config file created, edit it at %v", configFilePath)
 		} else if errors.Is(err, os.ErrPermission) {
 			return nil, fmt.Errorf("config file is not readable: %w", err)
 		} else {
