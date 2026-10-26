@@ -28,7 +28,7 @@ func getConfigContent(configFilePath string) ([]byte, error) {
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			config := Config{
-				HomeAssistantEndpoint: "http://192.168.1.10:8123",
+				HomeAssistantEndpoint: "http://192.168.1.10:8123/api",
 				HomeAssistantToken:    "token",
 			}
 			content, err = json.Marshal(config)
