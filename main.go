@@ -1,10 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"net/url"
+	"os"
 	"time"
 )
 
@@ -38,41 +42,83 @@ func main() {
 		log.Fatalf("HomeAssistantToken is not set in %s", configFilePath)
 	}
 
-	run(config)
+	args := flag.Args()
+	if len(args) == 0 {
+		log.Fatalf("no command specified")
+	}
+
+	run(config, args)
 }
 
-func run(config Config) {
-	valid, err := checkConnection(config)
-	if err != nil {
-		log.Fatalf("failed to check connection: %v", err)
+func run(config Config, args []string) {
+	switch args[0] {
+	case "list":
+		list(config)
+	default:
+		log.Fatalf("unknown command: %s", os.Args[1])
+		os.Exit(2)
 	}
-	if !valid {
-		log.Fatalf("failed to connect to HomeAssistant")
-	}
-	log.Printf("connected to HomeAssistant")
-
 }
 
-func checkConnection(config Config) (bool, error) {
-	req, err := http.NewRequest(http.MethodGet, config.HomeAssistantEndpoint, nil)
+func list(config Config) {
+	res, err := getEntities(config)
 	if err != nil {
-		return false, err
+		log.Fatalf("failed to get entities: %v", err)
+	}
+
+	var entities []struct {
+		ID string `json:"entity_id"`
+	}
+	if err := json.Unmarshal(res, &entities); err != nil {
+		log.Fatalf("failed to unmarshal entities: %v", err)
+	}
+
+	for _, entity := range entities {
+		log.Printf("entity: %s", entity.ID)
+	}
+}
+
+func getEntities(config Config) ([]byte, error) {
+	return get(config, "states")
+}
+
+func get(config Config, path string) (json.RawMessage, error) {
+	full, err := url.JoinPath(config.HomeAssistantEndpoint, path)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, full, nil)
+	if err != nil {
+		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+config.HomeAssistantToken)
-	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-	}
+	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		return false, fmt.Errorf("failed to connect to HomeAssistant: %v", resp.StatusCode)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
 	}
 
-	return true, nil
+	if resp.StatusCode != http.StatusOK {
+		switch resp.StatusCode {
+		case http.StatusUnauthorized, http.StatusForbidden:
+			return nil, fmt.Errorf("token rejected (%s)", resp.Status)
+		case http.StatusNotFound:
+			return nil, fmt.Errorf("no API at %s", full)
+		}
+		return nil, fmt.Errorf("home assistant returned %s: %s", resp.Status, body)
+	}
+
+	return body, nil
+}
+
+func getStates(config Config) (json.RawMessage, error) {
+	return get(config, "states")
 }
