@@ -10,13 +10,18 @@ import (
 	"net/url"
 	"os"
 	"time"
+	"strings"
 )
+
+type Entity struct {
+   ID    string `json:"entity_id"`
+   State string `json:"state"`
+}
 
 func main() {
 	flag.Parse()
 
 	log.SetFlags(0)
-	log.SetPrefix("homie: ")
 
 	configFilePath, err := getConfigFilePath()
 	if err != nil {
@@ -54,23 +59,18 @@ func run(config Config, args []string) {
 	switch args[0] {
 	case "list":
 		list(config)
+	case "lights":
+		lights(config)
 	default:
-		log.Fatalf("unknown command: %s", os.Args[1])
+		log.Fatalf("unknown command: %s", args[0])
 		os.Exit(2)
 	}
 }
 
 func list(config Config) {
-	res, err := getEntities(config)
+	entities, err := getEntities(config)
 	if err != nil {
 		log.Fatalf("failed to get entities: %v", err)
-	}
-
-	var entities []struct {
-		ID string `json:"entity_id"`
-	}
-	if err := json.Unmarshal(res, &entities); err != nil {
-		log.Fatalf("failed to unmarshal entities: %v", err)
 	}
 
 	for _, entity := range entities {
@@ -78,8 +78,38 @@ func list(config Config) {
 	}
 }
 
-func getEntities(config Config) ([]byte, error) {
-	return get(config, "states")
+func lights(config Config) {
+	entities, err := getEntities(config)
+	if err != nil {
+		log.Fatalf("failed to get entities: %v", err)
+	}
+
+	for _, entity := range entities {
+		if !strings.Contains(entity.ID, "light") {
+			continue
+		}
+		if strings.Contains(entity.ID, "automation") {
+			continue
+		}
+		if strings.Contains(entity.ID,"select") {
+			continue
+		}
+		log.Printf("entity: %s, state: %s", entity.ID, entity.State)
+	}
+}
+
+func getEntities(config Config) ([]Entity, error) {
+	res, err := get(config, "states")
+	if err != nil {
+		return nil, err
+	}
+
+	var entities []Entity
+	if err := json.Unmarshal(res, &entities); err != nil {
+		log.Fatalf("failed to unmarshal entities: %v", err)
+	}
+
+	return entities, nil
 }
 
 func get(config Config, path string) (json.RawMessage, error) {
@@ -117,8 +147,4 @@ func get(config Config, path string) (json.RawMessage, error) {
 	}
 
 	return body, nil
-}
-
-func getStates(config Config) (json.RawMessage, error) {
-	return get(config, "states")
 }
