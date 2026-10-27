@@ -23,11 +23,11 @@ func TestUnauthorized(t *testing.T) {
 
 	cfg := Config{HomeAssistantEndpoint: srv.URL, HomeAssistantToken: "bad"}
 
-	if _, err := get(cfg, "states"); err == nil || !strings.Contains(err.Error(), "token rejected") {
+	if _, err := Get(cfg, "states"); err == nil || !strings.Contains(err.Error(), "token rejected") {
 		t.Fatalf("get: want token rejected error, got %v", err)
 	}
 
-	if _, err := set(cfg, "services/light/turn_on", "light.kitchen"); err == nil {
+	if _, err := Set(cfg, "services/light/turn_on", "light.kitchen"); err == nil {
 		t.Fatal("set: want error for 401, got nil")
 	}
 }
@@ -43,11 +43,11 @@ func TestApiAuthSuccess(t *testing.T) {
 
 	cfg := Config{HomeAssistantEndpoint: srv.URL, HomeAssistantToken: "good"}
 
-	if _, err := get(cfg, "states"); err != nil {
+	if _, err := Get(cfg, "states"); err != nil {
 		t.Fatalf("get: want nil, got %v", err)
 	}
 
-	if _, err := set(cfg, "services/light/turn_on", "light.kitchen"); err != nil {
+	if _, err := Set(cfg, "services/light/turn_on", "light.kitchen"); err != nil {
 		t.Fatalf("set: want nil, got %v", err)
 	}
 }
@@ -83,7 +83,7 @@ func TestSetEntityPath(t *testing.T) {
 	}
 }
 
-func TesetSetInvalidEntity(t *testing.T) {
+func TestSetInvalidEntity(t *testing.T) {
 	for _, id := range []string{"", "invalid", ".lamp", "light."} {
 		t.Run(id, func(t *testing.T) {
 			called := false
