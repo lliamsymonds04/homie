@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 )
@@ -69,15 +68,18 @@ func run(config Config, args []string) {
 		if len(args) < 2 {
 			log.Fatalf("%s no entity specified", args[0])
 		}
-		setEntity(config, args[0], args[1])
+		err := SetEntity(config, args[0], args[1])
+		if err != nil {
+			log.Fatalf("failed to set entity: %v", err)
+		}
+
 	default:
 		log.Fatalf("unknown command: %s", args[0])
-		os.Exit(2)
 	}
 }
 
 func list(config Config, domain string) {
-	entities, err := getEntities(config)
+	entities, err := GetEntities(config)
 	if err != nil {
 		log.Fatalf("failed to get entities: %v", err)
 	}
@@ -90,7 +92,7 @@ func list(config Config, domain string) {
 	}
 }
 
-func getEntities(config Config) ([]Entity, error) {
+func GetEntities(config Config) ([]Entity, error) {
 	res, err := get(config, "states")
 	if err != nil {
 		return nil, err
@@ -98,16 +100,16 @@ func getEntities(config Config) ([]Entity, error) {
 
 	var entities []Entity
 	if err := json.Unmarshal(res, &entities); err != nil {
-		log.Fatalf("failed to unmarshal entities: %v", err)
+		return nil, err
 	}
 
 	return entities, nil
 }
 
-func setEntity(config Config, verb, entityID string) {
+func SetEntity(config Config, verb string, entityID string) error {
 	parts := strings.SplitN(entityID, ".", 2)
-	if len(parts) != 2 {
-		log.Fatalf("%q is not domain.object_id", entityID)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return fmt.Errorf("%q is not domain.object_id", entityID)
 	}
 
 	service := verb
@@ -116,8 +118,10 @@ func setEntity(config Config, verb, entityID string) {
 	}
 
 	if _, err := set(config, fmt.Sprintf("services/%s/%s", parts[0], service), entityID); err != nil {
-		log.Fatalf("failed: %v", err)
+		return fmt.Errorf("failed: %v", err)
 	}
+
+	return nil
 }
 
 func get(config Config, path string) (json.RawMessage, error) {
@@ -131,7 +135,6 @@ func get(config Config, path string) (json.RawMessage, error) {
 		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+config.HomeAssistantToken)
-	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
@@ -177,7 +180,8 @@ func set(config Config, path string, entityId string) (json.RawMessage, error) {
 	req.Header.Set("Authorization", "Bearer "+config.HomeAssistantToken)
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
