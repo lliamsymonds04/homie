@@ -36,7 +36,7 @@ func SetEntity(config Config, verb string, entityID string) error {
 		service = "turn_" + verb
 	}
 
-	if _, err := Set(config, fmt.Sprintf("services/%s/%s", parts[0], service), entityID); err != nil {
+	if _, err := Set(config, fmt.Sprintf("services/%s/%s", parts[0], service), entityID, nil); err != nil {
 		return fmt.Errorf("failed: %v", err)
 	}
 
@@ -94,8 +94,9 @@ func Get(config Config, path string) (json.RawMessage, error) {
 	return body, nil
 }
 
-func Set(config Config, path string, entityId string) (json.RawMessage, error) {
-	payload := map[string]string{"entity_id": entityId}
+func Set(config Config, path string, entityId string, payload map[string]string) (json.RawMessage, error) {
+	payload["entity_id"] = entityId
+
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
@@ -126,4 +127,22 @@ func Set(config Config, path string, entityId string) (json.RawMessage, error) {
 	}
 
 	return out, nil
+}
+
+func SetLightColour(config Config, entityID string, colour string) error {
+	payload := map[string]string{"color_name": colour}
+	domain := "light"
+	if parts := strings.Split(entityID, "."); len(parts) == 2 {
+		v := parts[0]
+		if v != domain {
+			return fmt.Errorf("Entity %s is not from the %s domain", entityID, domain)
+		}
+	} else {
+		return fmt.Errorf("Entity has no domain, needs to be from %s", domain)
+	}
+
+	if _, err := Set(config, fmt.Sprintf("services/light/%s", "turn_on"), entityID, payload); err != nil {
+		return fmt.Errorf("failed: %v", err)
+	}
+	return nil
 }

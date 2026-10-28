@@ -74,6 +74,16 @@ func run(config Config, args []string) {
 			log.Fatalf("failed to get state: %v", err)
 		}
 		log.Printf("state: %s", state)
+	case "light":
+		if len(args) < 3 {
+			log.Fatalf("Exptected 3 arguments, light <entity> <colour>")
+		}
+		entity_id := args[1]
+		colour := args[2]
+		err := SetLightColour(config, entity_id, colour)
+		if err != nil {
+			log.Fatalf("failed to set light: %v", err)
+		}
 
 	default:
 		log.Fatalf("unknown command: %s", args[0])

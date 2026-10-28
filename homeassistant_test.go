@@ -27,7 +27,7 @@ func TestUnauthorized(t *testing.T) {
 		t.Fatalf("get: want token rejected error, got %v", err)
 	}
 
-	if _, err := Set(cfg, "services/light/turn_on", "light.kitchen"); err == nil {
+	if _, err := Set(cfg, "services/light/turn_on", "light.kitchen", nil); err == nil {
 		t.Fatal("set: want error for 401, got nil")
 	}
 }
@@ -47,7 +47,7 @@ func TestApiAuthSuccess(t *testing.T) {
 		t.Fatalf("get: want nil, got %v", err)
 	}
 
-	if _, err := Set(cfg, "services/light/turn_on", "light.kitchen"); err != nil {
+	if _, err := Set(cfg, "services/light/turn_on", "light.kitchen", nil); err != nil {
 		t.Fatalf("set: want nil, got %v", err)
 	}
 }
