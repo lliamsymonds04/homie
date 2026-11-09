@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type Config struct {
@@ -31,7 +32,7 @@ func getConfigFilePath() (string, error) {
 	return filepath.Join(configDir, "config.json"), nil
 }
 
-func getHistoryFilePath() (string, error) {
+func GetHistoryFilePath() (string, error) {
 	configDir, err := getConfigDir()
 	if err != nil {
 		return "", err
@@ -81,4 +82,24 @@ func parseConfig(content []byte) (config Config, err error) {
 	}
 
 	return
+}
+
+func LoadHistory() ([]string, error) {
+	historyFilePath, err := GetHistoryFilePath()
+	if err != nil {
+		return nil, err
+	}
+
+	content, err := os.ReadFile(historyFilePath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, nil
+		} else if errors.Is(err, os.ErrPermission) {
+			return nil, fmt.Errorf("history file is not readable: %w", err)
+		} else {
+			return nil, fmt.Errorf("read history file: %w", err)
+		}
+	}
+
+	return strings.Fields(string(content)), nil
 }

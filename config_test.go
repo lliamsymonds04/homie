@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -95,5 +96,52 @@ func TestParseConfig(t *testing.T) {
 				t.Errorf("parseConfig(%q) = %+v, want %+v", tc.in, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestLoadHistory(t *testing.T) {
+	cases := []struct {
+		name    string
+		in      string
+		dir     bool
+		want    []string
+		wantErr bool
+	}{
+		{"empty object", "", false, []string{}, false},
+		{"valid history", "one two three", false, []string{"one", "two", "three"}, false},
+		{"garbage", "", true, []string{}, true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+			path, err := GetHistoryFilePath()
+			if err != nil {
+				t.Fatalf("GetHistoryPath: %v", err)
+			}
+			if tc.dir {
+				os.MkdirAll(path, 0o700)
+			} else {
+				os.MkdirAll(filepath.Dir(path), 0o700)
+				os.WriteFile(path, []byte(tc.in), 0o600)
+			}
+
+			history, err := LoadHistory()
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("LoadHistory(%q) = %+v, want error", tc.in, history)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("LoadHistory(%q): %v", tc.in, err)
+			}
+			if !reflect.DeepEqual(history, tc.want) {
+				t.Errorf("LoadHistory(%q) = %+v, want %+v", tc.in, history, tc.want)
+			}
+
+		})
+
 	}
 }
