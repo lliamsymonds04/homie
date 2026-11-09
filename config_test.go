@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -11,6 +12,9 @@ func TestGetConfigContentCreatesFile(t *testing.T) {
 	path, err := getConfigFilePath()
 	if err != nil {
 		t.Fatalf("get config file path: %v", err)
+	}
+	if want := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "homie", "config.json"); path != want {
+		t.Errorf("path = %q, want %q", path, want)
 	}
 
 	if _, err := getConfigContent(path); err == nil {

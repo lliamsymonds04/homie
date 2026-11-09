@@ -13,13 +13,31 @@ type Config struct {
 	HomeAssistantToken    string
 }
 
-func getConfigFilePath() (string, error) {
+func getConfigDir() (string, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get config directory: %v", err)
 	}
 
-	return filepath.Join(configDir, "homie", "config.json"), nil
+	return filepath.Join(configDir, "homie"), nil
+}
+
+func getConfigFilePath() (string, error) {
+	configDir, err := getConfigDir()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(configDir, "config.json"), nil
+}
+
+func getHistoryFilePath() (string, error) {
+	configDir, err := getConfigDir()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(configDir, "history"), nil
 }
 
 func getConfigContent(configFilePath string) ([]byte, error) {
