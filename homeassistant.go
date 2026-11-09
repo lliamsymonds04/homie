@@ -95,6 +95,9 @@ func Get(config Config, path string) (json.RawMessage, error) {
 }
 
 func Set(config Config, path string, entityId string, payload map[string]string) (json.RawMessage, error) {
+	if payload == nil {
+		payload = map[string]string{}
+	}
 	payload["entity_id"] = entityId
 
 	body, err := json.Marshal(payload)
