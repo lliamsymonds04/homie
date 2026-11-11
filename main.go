@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"strings"
 )
@@ -15,6 +16,32 @@ func main() {
 	flag.Parse()
 
 	log.SetFlags(0)
+
+	args := flag.Args()
+
+	if len(args) > 0 {
+		switch args[0] {
+		case "_complete":
+			history, _ := LoadHistory()
+			for _, candidate := range Complete(args[1:], history) {
+				fmt.Println(candidate)
+			}
+			return
+		case "completion":
+			if len(args) < 2 {
+				log.Fatalf("usage: homie completion fish|bash")
+			}
+			switch args[1] {
+			case "fish":
+				fmt.Print(fishCompletion)
+			case "bash":
+				fmt.Print(bashCompletion)
+			default:
+				log.Fatalf("no completion for %q, expected fish or bash", args[1])
+			}
+			return
+		}
+	}
 
 	configFilePath, err := getConfigFilePath()
 	if err != nil {
@@ -40,7 +67,6 @@ func main() {
 		log.Fatalf("HomeAssistantToken is not set in %s", configFilePath)
 	}
 
-	args := flag.Args()
 	if len(args) == 0 {
 		log.Fatalf("no command specified")
 	}

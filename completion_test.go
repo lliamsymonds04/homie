@@ -26,6 +26,7 @@ func TestComplete(t *testing.T) {
 		{"list domains", []string{"list"}, []string{"light", "switch"}},
 		{"unknown command", []string{"nope"}, nil},
 		{"hidden command", []string{"_complete"}, nil},
+		{"shell for completion", []string{"completion"}, []string{"fish", "bash"}},
 	}
 
 	for _, c := range cases {
