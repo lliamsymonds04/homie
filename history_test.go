@@ -128,3 +128,31 @@ func TestRecordHistoryLimit(t *testing.T) {
 		}
 	}
 }
+
+func TestClearHistory(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := RecordHistory("one")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ClearHistory()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// check again once its empty to make sure it doesnt error
+	err = ClearHistory()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	history, err := LoadHistory()
+	if err != nil {
+		t.Fatalf("LoadHistory: %v", err)
+	}
+	if len(history) != 0 {
+		t.Errorf("LoadHistory = %+v, want %+v", history, []string{})
+	}
+}

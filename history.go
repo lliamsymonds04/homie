@@ -70,3 +70,21 @@ func RecordHistory(entry string) error {
 
 	return nil
 }
+
+func ClearHistory() error {
+	historyFilePath, err := GetHistoryFilePath()
+	if err != nil {
+		return err
+	}
+
+	err = os.Remove(historyFilePath)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		if errors.Is(err, os.ErrPermission) {
+			return fmt.Errorf("history file is not writable: %w", err)
+		} else {
+			return fmt.Errorf("remove history file: %w", err)
+		}
+	}
+
+	return nil
+}

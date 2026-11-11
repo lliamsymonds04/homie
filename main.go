@@ -113,6 +113,8 @@ func run(config Config, args []string) {
 			log.Fatalf("failed to set light: %v", err)
 		}
 		RecordHistory(entity_id)
+	case "clear":
+		ClearHistory()
 
 	default:
 		log.Fatalf("unknown command: %s", args[0])
