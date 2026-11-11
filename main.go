@@ -91,6 +91,7 @@ func run(config Config, args []string) {
 		if err != nil {
 			log.Fatalf("failed to set entity: %v", err)
 		}
+		RecordHistory(args[1])
 	case "state":
 		if len(args) < 2 {
 			log.Fatalf("%s no entity specified", args[0])
@@ -99,6 +100,7 @@ func run(config Config, args []string) {
 		if err != nil {
 			log.Fatalf("failed to get state: %v", err)
 		}
+		RecordHistory(args[1])
 		log.Printf("state: %s", state)
 	case "light":
 		if len(args) < 3 {
@@ -110,6 +112,7 @@ func run(config Config, args []string) {
 		if err != nil {
 			log.Fatalf("failed to set light: %v", err)
 		}
+		RecordHistory(entity_id)
 
 	default:
 		log.Fatalf("unknown command: %s", args[0])
