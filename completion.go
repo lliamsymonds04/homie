@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-var commands = []string{"list", "on", "off", "toggle", "state", "light", "completion"}
+var commands = []string{"list", "on", "off", "toggle", "state", "light", "clear", "completion", "help"}
 
 func Complete(args []string, history []string) []string {
 	if len(args) == 0 {

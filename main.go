@@ -13,6 +13,7 @@ type Entity struct {
 }
 
 func main() {
+	flag.Usage = printUsage
 	flag.Parse()
 
 	log.SetFlags(0)
@@ -26,6 +27,9 @@ func main() {
 			for _, candidate := range Complete(args[1:], history) {
 				fmt.Println(candidate)
 			}
+			return
+		case "help":
+			printUsage()
 			return
 		case "completion":
 			if len(args) < 2 {
@@ -68,7 +72,7 @@ func main() {
 	}
 
 	if len(args) == 0 {
-		log.Fatalf("no command specified")
+		log.Fatal(usage)
 	}
 
 	run(config, args)
@@ -117,9 +121,27 @@ func run(config Config, args []string) {
 		ClearHistory()
 
 	default:
-		log.Fatalf("unknown command: %s", args[0])
+		log.Fatalf("unknown command: %s (see homie help)", args[0])
 	}
 }
+
+func printUsage() {
+	fmt.Print(usage)
+}
+
+const usage = `usage: homie <command> [args]
+
+commands:
+  list [domain]         list entities, optionally filtered by domain
+  on|off|toggle <id>    switch an entity
+  state <id>            print an entity's state
+  light <id> <colour>   set a light's colour
+  clear                 clear entity history
+  completion fish|bash  print a shell completion script
+  help                  print this
+
+_complete is used internally by shell completion.
+`
 
 func list(config Config, domain string) {
 	entities, err := GetEntities(config)
