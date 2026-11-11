@@ -110,7 +110,7 @@ func TestLoadHistory(t *testing.T) {
 	}{
 		{"empty object", "", false, []string{}, false},
 		{"valid history", "one two three", false, []string{"one", "two", "three"}, false},
-		{"garbage", "", true, []string{}, true},
+		{"path is directory", "", true, []string{}, true},
 	}
 
 	for _, tc := range cases {
@@ -150,7 +150,11 @@ func TestLoadHistory(t *testing.T) {
 func TestRecordHistory(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
-	RecordHistory("one")
+	err := RecordHistory("one")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	history, err := LoadHistory()
 	if err != nil {
 		t.Fatalf("LoadHistory: %v", err)
@@ -159,23 +163,31 @@ func TestRecordHistory(t *testing.T) {
 		t.Errorf("LoadHistory = %+v, want %+v", history, []string{"one"})
 	}
 
-	RecordHistory("two")
+	err = RecordHistory("two")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	history, err = LoadHistory()
 	if err != nil {
 		t.Fatalf("LoadHistory: %v", err)
 	}
 	if !reflect.DeepEqual(history, []string{"two", "one"}) {
-		t.Errorf("LoadHistory = %+v, want %+v", history, []string{"one", "two"})
+		t.Errorf("LoadHistory = %+v, want %+v", history, []string{"two", "one"})
 	}
 
 	// Test duplicates aren't added
-	RecordHistory("two")
+	err = RecordHistory("two")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	history, err = LoadHistory()
 	if err != nil {
 		t.Fatalf("LoadHistory: %v", err)
 	}
 	if !reflect.DeepEqual(history, []string{"two", "one"}) {
-		t.Errorf("LoadHistory = %+v, want %+v", history, []string{"one", "two"})
+		t.Errorf("LoadHistory = %+v, want %+v", history, []string{"two", "one"})
 	}
 }
 
