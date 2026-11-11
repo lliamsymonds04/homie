@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -143,5 +144,67 @@ func TestLoadHistory(t *testing.T) {
 
 		})
 
+	}
+}
+
+func TestRecordHistory(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	RecordHistory("one")
+	history, err := LoadHistory()
+	if err != nil {
+		t.Fatalf("LoadHistory: %v", err)
+	}
+	if !reflect.DeepEqual(history, []string{"one"}) {
+		t.Errorf("LoadHistory = %+v, want %+v", history, []string{"one"})
+	}
+
+	RecordHistory("two")
+	history, err = LoadHistory()
+	if err != nil {
+		t.Fatalf("LoadHistory: %v", err)
+	}
+	if !reflect.DeepEqual(history, []string{"two", "one"}) {
+		t.Errorf("LoadHistory = %+v, want %+v", history, []string{"one", "two"})
+	}
+
+	// Test duplicates aren't added
+	RecordHistory("two")
+	history, err = LoadHistory()
+	if err != nil {
+		t.Fatalf("LoadHistory: %v", err)
+	}
+	if !reflect.DeepEqual(history, []string{"two", "one"}) {
+		t.Errorf("LoadHistory = %+v, want %+v", history, []string{"one", "two"})
+	}
+}
+
+func TestRecordHistoryLimit(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	for i := range HistoryLimit + 1 {
+		if err := RecordHistory(fmt.Sprintf("light.e%d", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	history, err := LoadHistory()
+	if err != nil {
+		t.Fatalf("LoadHistory: %v", err)
+	}
+	if len(history) != HistoryLimit {
+		t.Errorf("LoadHistory = %+v, want %+v", history, []string{"light.e" + fmt.Sprint(HistoryLimit)})
+	}
+
+	// check the first entry is the last entry we added
+	if want := fmt.Sprintf("light.e%d", HistoryLimit); history[0] != want {
+		t.Errorf("LoadHistory = %+v, want %+v", history, []string{want})
+	}
+
+	// check the very first entry is the one that was dropped
+	for _, e := range history {
+		if e == "light.e0" {
+			t.Error("history[0] entry light.e0 should been dropped")
+		}
 	}
 }
