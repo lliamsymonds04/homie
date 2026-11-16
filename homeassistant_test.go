@@ -33,6 +33,34 @@ func TestUnauthorized(t *testing.T) {
 	}
 }
 
+func TestGetStatusErrors(t *testing.T) {
+	cases := []struct {
+		name   string
+		status int
+		body   string
+		want   string // error substring
+	}{
+		{"not found", http.StatusNotFound, "", "not found"},
+		{"server error", http.StatusInternalServerError, "boom", "500 Internal Server Error: boom"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tc.status)
+				io.WriteString(w, tc.body)
+			}))
+			defer srv.Close()
+
+			cfg := Config{HomeAssistantEndpoint: srv.URL + "/api", HomeAssistantToken: "x"}
+			_, err := Get(cfg, "states/light.a")
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("Get = %v, want error containing %q", err, tc.want)
+			}
+		})
+	}
+}
+
 func TestApiAuthSuccess(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if got := r.Header.Get("Authorization"); got != "Bearer good" {
@@ -254,5 +282,103 @@ func TestList(t *testing.T) {
 	want := []string{"light.a", "light.b"}
 	if !slices.Equal(got, want) {
 		t.Errorf("listed %v, want %v", got, want)
+	}
+}
+
+func TestGetState(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/states/light.a" {
+			t.Errorf("request = %s %s, want GET /api/states/light.a", r.Method, r.URL.Path)
+		}
+		if got := r.Header.Get("Authorization"); got != "Bearer x" {
+			t.Errorf("Authorization = %q, want %q", got, "Bearer x")
+		}
+		io.WriteString(w, `{"entity_id":"light.a","state":"on"}`)
+	}))
+	defer srv.Close()
+
+	cfg := Config{HomeAssistantEndpoint: srv.URL + "/api", HomeAssistantToken: "x"}
+
+	got, err := GetState(cfg, "light.a")
+	if err != nil {
+		t.Fatalf("GetState = %v, want nil", err)
+	}
+	if got != "on" {
+		t.Errorf("got %v, want on", got)
+	}
+}
+
+func TestGetStateBadJson(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, "nope")
+	}))
+	defer srv.Close()
+
+	cfg := Config{HomeAssistantEndpoint: srv.URL + "/api", HomeAssistantToken: "x"}
+
+	_, err := GetState(cfg, "light.a")
+	if err == nil {
+		t.Errorf("GetState = nil, want error")
+	}
+}
+
+func TestSetLightColour(t *testing.T) {
+	var path string
+	var body map[string]string
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path = r.URL.Path
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode body: %v", err)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	cfg := Config{HomeAssistantEndpoint: srv.URL + "/api", HomeAssistantToken: "x"}
+	if err := SetLightColour(cfg, "light.desk_lamp", "red"); err != nil {
+		t.Fatalf("SetLightColour = %v, want nil", err)
+	}
+
+	if want := "/api/services/light/turn_on"; path != want {
+		t.Errorf("path = %q, want %q", path, want)
+	}
+	if got := body["entity_id"]; got != "light.desk_lamp" {
+		t.Errorf("entity_id = %q, want %q", got, "light.desk_lamp")
+	}
+	if got := body["color_name"]; got != "red" {
+		t.Errorf("color_name = %q, want %q", got, "red")
+	}
+}
+
+func TestSetLightColourWrongDomain(t *testing.T) {
+	cases := []struct {
+		entity string
+		want   string // error substring
+	}{
+		{"switch.desk_lamp", "not from the light domain"},
+		{".desk_lamp", "not from the light domain"},
+		{"light", "no domain"},
+		{"light.a.b", "no domain"},
+		{"", "no domain"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.entity, func(t *testing.T) {
+			called := false
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				called = true
+			}))
+			defer srv.Close()
+
+			cfg := Config{HomeAssistantEndpoint: srv.URL + "/api", HomeAssistantToken: "x"}
+			err := SetLightColour(cfg, tc.entity, "red")
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("SetLightColour(%q) = %v, want error containing %q", tc.entity, err, tc.want)
+			}
+			if called {
+				t.Errorf("SetLightColour(%q) made a request, want none", tc.entity)
+			}
+		})
 	}
 }
