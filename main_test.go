@@ -86,6 +86,14 @@ func captureLog(t *testing.T) *bytes.Buffer {
 	return &buf
 }
 
+// Go stamps a version from the VCS state, so only check that one is printed.
+func TestVersion(t *testing.T) {
+	res := runHomie(t, t.TempDir(), "version")
+	if res.exit != 0 || strings.TrimSpace(res.stdout) == "" {
+		t.Errorf("version = %q (exit %d), want a version string", res.stdout, res.exit)
+	}
+}
+
 func TestBinary(t *testing.T) {
 	cases := []struct {
 		name    string

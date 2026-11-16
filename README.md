@@ -14,12 +14,18 @@ No dependencies outside the standard library.
 ## Install
 
 ```sh
-git clone git@github.com:lliamsymonds04/homie.git
+go install github.com/lliamsymonds04/homie@latest
+```
+
+or from a clone:
+
+```sh
+git clone https://github.com/lliamsymonds04/homie.git
 cd homie
 go build -o ~/.local/bin/homie
 ```
 
-`go install github.com/lliamsymonds04/homie@latest` only works once the repo is public (or with `GOPRIVATE` and credentials set).
+`homie version` prints the version it was installed at (`dev`-ish pseudo-version for a plain local build).
 
 ## Configure
 
@@ -54,6 +60,7 @@ light <id> <colour>   set a light's colour
 trigger <id>          run an automation
 clear                 clear entity history
 completion fish|bash  print a shell completion script
+version               print the version
 help                  print the above
 ```
 

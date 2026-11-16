@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"runtime/debug"
 	"strings"
 )
 
@@ -30,6 +31,9 @@ func main() {
 			return
 		case "help":
 			printUsage()
+			return
+		case "version":
+			fmt.Println(buildVersion())
 			return
 		case "completion":
 			if len(args) < 2 {
@@ -59,6 +63,15 @@ func main() {
 	if err := run(config, args); err != nil {
 		log.Fatalf("%v", err)
 	}
+}
+
+// buildVersion reads the module version go install stamps in; a plain local
+// build has none, so it reports dev.
+func buildVersion() string {
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "(devel)" && info.Main.Version != "" {
+		return info.Main.Version
+	}
+	return "dev"
 }
 
 func loadConfig() (Config, error) {
@@ -156,6 +169,7 @@ commands:
   trigger <id>			run an automation
   clear                 clear entity history
   completion fish|bash  print a shell completion script
+  version               print the version
   help                  print this
 
 _complete is used internally by shell completion.
