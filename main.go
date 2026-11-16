@@ -117,6 +117,17 @@ func run(config Config, args []string) {
 			log.Fatalf("failed to set light: %v", err)
 		}
 		RecordHistory(entity_id)
+	case "trigger":
+		if len(args) < 2 {
+			log.Fatalf("Exptected 2 arguments, trigger <entity>")
+		}
+		entity_id := args[1]
+		err := TriggerAutomation(config, entity_id)
+		if err != nil {
+			log.Fatalf("failed to trigger: %v", err)
+		}
+		RecordHistory(entity_id)
+
 	case "clear":
 		ClearHistory()
 
@@ -136,6 +147,7 @@ commands:
   on|off|toggle <id>    switch an entity
   state <id>            print an entity's state
   light <id> <colour>   set a light's colour
+  trigger <id>			run an automation
   clear                 clear entity history
   completion fish|bash  print a shell completion script
   help                  print this

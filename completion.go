@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-var commands = []string{"list", "on", "off", "toggle", "state", "light", "clear", "completion", "help"}
+var commands = []string{"list", "on", "off", "toggle", "state", "light", "clear", "trigger", "completion", "help"}
 
 func Complete(args []string, history []string) []string {
 	if len(args) == 0 {
@@ -17,7 +17,7 @@ func Complete(args []string, history []string) []string {
 	}
 
 	switch args[0] {
-	case "on", "off", "toggle", "state", "light":
+	case "on", "off", "toggle", "state", "light", "trigger":
 		return history
 	case "list":
 		var domains []string

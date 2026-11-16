@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"log"
 	"net/http"
@@ -98,6 +99,66 @@ func TestSetInvalidEntity(t *testing.T) {
 			}
 			if called {
 				t.Errorf("SetEntity(%q) called, want not called", id)
+			}
+		})
+	}
+}
+
+func TestTriggerAutomation(t *testing.T) {
+	cases := []struct {
+		entity   string
+		wantPath string // empty means the request must never be made
+	}{
+		{"automation.morning", "/api/services/automation/trigger"},
+		{"", ""},
+		{"invalid", ""},
+		{"automation.", ""},
+		{".morning", ""},
+		{"light.desk_lamp", ""},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.entity, func(t *testing.T) {
+			var method, path string
+			var body map[string]string
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				method = r.Method
+				path = r.URL.Path
+				if got := r.Header.Get("Authorization"); got != "Bearer good" {
+					t.Errorf("Authorization = %q, want %q", got, "Bearer good")
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					t.Errorf("decode body: %v", err)
+				}
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer srv.Close()
+
+			cfg := Config{HomeAssistantEndpoint: srv.URL + "/api", HomeAssistantToken: "good"}
+			err := TriggerAutomation(cfg, tc.entity)
+
+			if tc.wantPath == "" {
+				if err == nil {
+					t.Errorf("TriggerAutomation(%q) = nil, want error", tc.entity)
+				}
+				if path != "" {
+					t.Errorf("TriggerAutomation(%q) sent %s %s, want no request", tc.entity, method, path)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("TriggerAutomation = %v, want nil", err)
+			}
+			if method != http.MethodPost {
+				t.Errorf("method = %q, want %q", method, http.MethodPost)
+			}
+			if path != tc.wantPath {
+				t.Errorf("path = %q, want %q", path, tc.wantPath)
+			}
+			if got := body["entity_id"]; got != tc.entity {
+				t.Errorf("entity_id = %q, want %q", got, tc.entity)
 			}
 		})
 	}

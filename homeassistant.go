@@ -144,7 +144,25 @@ func SetLightColour(config Config, entityID string, colour string) error {
 		return fmt.Errorf("Entity has no domain, needs to be from %s", domain)
 	}
 
-	if _, err := Set(config, fmt.Sprintf("services/light/%s", "turn_on"), entityID, payload); err != nil {
+	if _, err := Set(config, "services/light/turn_on", entityID, payload); err != nil {
+		return fmt.Errorf("failed: %v", err)
+	}
+	return nil
+}
+
+func TriggerAutomation(config Config, entityID string) error {
+	payload := map[string]string{"entity_id": entityID}
+	domain := "automation"
+	if parts := strings.Split(entityID, "."); len(parts) == 2 && parts[0] != "" && parts[1] != "" {
+		v := parts[0]
+		if v != domain {
+			return fmt.Errorf("Entity %s is not from the %s domain", entityID, domain)
+		}
+	} else {
+		return fmt.Errorf("Entity has no domain, needs to be from %s", domain)
+	}
+
+	if _, err := Set(config, "services/automation/trigger", entityID, payload); err != nil {
 		return fmt.Errorf("failed: %v", err)
 	}
 	return nil

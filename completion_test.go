@@ -23,6 +23,8 @@ func TestComplete(t *testing.T) {
 		{"no args", nil, commands},
 		{"after the entity", []string{"on", "light.desk"}, nil},
 		{"after the colour", []string{"light", "light.desk", "red"}, nil},
+		{"after trigger", []string{"trigger", "automation.morning"}, nil},
+		{"entities for trigger", []string{"trigger"}, history},
 		{"list domains", []string{"list"}, []string{"light", "switch"}},
 		{"unknown command", []string{"nope"}, nil},
 		{"hidden command", []string{"_complete"}, nil},
