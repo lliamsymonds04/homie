@@ -47,38 +47,47 @@ func main() {
 		}
 	}
 
-	configFilePath, err := getConfigFilePath()
-	if err != nil {
-		log.Fatalf("failed to get config file path: %v", err)
-	}
-
-	content, err := getConfigContent(configFilePath)
+	config, err := loadConfig()
 	if err != nil {
 		log.Fatalf("%v", err)
-	}
-
-	// parse config
-	config, err := parseConfig(content)
-	if err != nil {
-		log.Fatalf("invalid config: %v", err)
-	}
-
-	// run
-	if config.HomeAssistantEndpoint == "" {
-		log.Fatalf("HomeAssistantEndpoint is not set in %s", configFilePath)
-	}
-	if config.HomeAssistantToken == "" {
-		log.Fatalf("HomeAssistantToken is not set in %s", configFilePath)
 	}
 
 	if len(args) == 0 {
 		log.Fatal(usage)
 	}
 
-	run(config, args)
+	if err := run(config, args); err != nil {
+		log.Fatalf("%v", err)
+	}
 }
 
-func run(config Config, args []string) {
+func loadConfig() (Config, error) {
+	configFilePath, err := getConfigFilePath()
+	if err != nil {
+		return Config{}, fmt.Errorf("failed to get config file path: %v", err)
+	}
+
+	content, err := getConfigContent(configFilePath)
+	if err != nil {
+		return Config{}, err
+	}
+
+	config, err := parseConfig(content)
+	if err != nil {
+		return Config{}, fmt.Errorf("invalid config: %v", err)
+	}
+
+	if config.HomeAssistantEndpoint == "" {
+		return Config{}, fmt.Errorf("HomeAssistantEndpoint is not set in %s", configFilePath)
+	}
+	if config.HomeAssistantToken == "" {
+		return Config{}, fmt.Errorf("HomeAssistantToken is not set in %s", configFilePath)
+	}
+
+	return config, nil
+}
+
+func run(config Config, args []string) error {
 	switch args[0] {
 	case "list":
 		domain := ""
@@ -86,54 +95,51 @@ func run(config Config, args []string) {
 			domain = args[1]
 		}
 
-		list(config, domain)
+		return list(config, domain)
 	case "on", "off", "toggle":
 		if len(args) < 2 {
-			log.Fatalf("%s no entity specified", args[0])
+			return fmt.Errorf("%s no entity specified", args[0])
 		}
-		err := SetEntity(config, args[0], args[1])
-		if err != nil {
-			log.Fatalf("failed to set entity: %v", err)
+		if err := SetEntity(config, args[0], args[1]); err != nil {
+			return fmt.Errorf("failed to set entity: %v", err)
 		}
 		RecordHistory(args[1])
 	case "state":
 		if len(args) < 2 {
-			log.Fatalf("%s no entity specified", args[0])
+			return fmt.Errorf("%s no entity specified", args[0])
 		}
 		state, err := GetState(config, args[1])
 		if err != nil {
-			log.Fatalf("failed to get state: %v", err)
+			return fmt.Errorf("failed to get state: %v", err)
 		}
 		RecordHistory(args[1])
 		log.Printf("state: %s", state)
 	case "light":
 		if len(args) < 3 {
-			log.Fatalf("Exptected 3 arguments, light <entity> <colour>")
+			return fmt.Errorf("Exptected 3 arguments, light <entity> <colour>")
 		}
-		entity_id := args[1]
+		entityId := args[1]
 		colour := args[2]
-		err := SetLightColour(config, entity_id, colour)
-		if err != nil {
-			log.Fatalf("failed to set light: %v", err)
+		if err := SetLightColour(config, entityId, colour); err != nil {
+			return fmt.Errorf("failed to set light: %v", err)
 		}
-		RecordHistory(entity_id)
+		RecordHistory(entityId)
 	case "trigger":
 		if len(args) < 2 {
-			log.Fatalf("Exptected 2 arguments, trigger <entity>")
+			return fmt.Errorf("Exptected 2 arguments, trigger <entity>")
 		}
-		entity_id := args[1]
-		err := TriggerAutomation(config, entity_id)
-		if err != nil {
-			log.Fatalf("failed to trigger: %v", err)
+		entityId := args[1]
+		if err := TriggerAutomation(config, entityId); err != nil {
+			return fmt.Errorf("failed to trigger: %v", err)
 		}
-		RecordHistory(entity_id)
-
+		RecordHistory(entityId)
 	case "clear":
 		ClearHistory()
-
 	default:
-		log.Fatalf("unknown command: %s (see homie help)", args[0])
+		return fmt.Errorf("unknown command: %s (see homie help)", args[0])
 	}
+
+	return nil
 }
 
 func printUsage() {
@@ -155,10 +161,10 @@ commands:
 _complete is used internally by shell completion.
 `
 
-func list(config Config, domain string) {
+func list(config Config, domain string) error {
 	entities, err := GetEntities(config)
 	if err != nil {
-		log.Fatalf("failed to get entities: %v", err)
+		return fmt.Errorf("failed to get entities: %v", err)
 	}
 
 	for _, entity := range entities {
@@ -167,4 +173,6 @@ func list(config Config, domain string) {
 		}
 		log.Printf("entity: %s", entity.ID)
 	}
+
+	return nil
 }

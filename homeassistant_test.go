@@ -270,7 +270,9 @@ func TestList(t *testing.T) {
 		log.SetFlags(log.LstdFlags)
 	}()
 
-	list(cfg, "light")
+	if err := list(cfg, "light"); err != nil {
+		t.Fatalf("list: %v", err)
+	}
 
 	var got []string
 	if s := strings.TrimSpace(buf.String()); s != "" {
